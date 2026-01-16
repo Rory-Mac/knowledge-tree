@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Abstract-Algebra</title>
+  <link rel="stylesheet" href="article.css"/>
+</head>
+<body>
+<h4>Abstract Algebra</h4>
+<p>Let \(G\) be a set. Let \(* : G \times G \rightarrow G\) be a binary operation. A group then is a tuple of the form \((G, *)\) such 
+  that:
+  <ol>
+    <li>(Associativity) \( (a * b) * c = a * (b * c) \forall a, b, c, \in G \)</li>
+    <li>(Existence of Identity) \( \exists e \in G \>|\> a * e = e * a = a \> \forall a \in G \)</li>
+    <li>(Existence of Inverses) \( \exists a \in G \implies \exists b \in G \>|\> a * b = b * a = e\) </li>
+  </ol>
+If the group also satisfies commutativity it is said to be an Abelian group: \( a * b = b * a \> \forall a, b \in G \).
+</p>
+<p>In set theory we talk about functions as mappings between sets. In group theory we talk about morphisms as structure-preserving 
+  mappings between groups. For the two groups \((G, *)\) and \((H, \circ )\) a homomorphism \(f\) is the map: 
+  \[f : G \rightarrow H \>|\> f(x * y) = f(x) \circ f(y) \> \forall x, y, \in G\]
+If \( G = H \) then \(f\) is said to be the identity homomorphism. A homomorphism that is bijective is called an isomorphism. 
+A homomorphism from \(G \rightarrow G\) is called an endomorphism, and an automorphism if also isomorphic.  
+</p>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</html>

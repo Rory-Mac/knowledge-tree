@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vision</title>
+  <link rel="stylesheet" href="article.css"/>
+</head>
+<body>
+<h4>Visual Perception</h4>
+<p>Let us start with visual perception. Visual perception exists as the aggregate of perceived red, green, and blue light. These are the
+primary colors. We can visualise transitions between the absence of light (black) and the presence of these primary colors as movement
+through color space. Combined movement of these primary colors gives the secondary colors: magenta (red and blue), cyan (green and blue) 
+and yellow (green and red). Combined movement of a primary color and a secondary color for which that primary color is not a component 
+gives white (the presence of all colors in equal portion). Thus, we can encode color space spatially as a 3-dimensional cube, with black as the origin, white as the opposing vertex, primary colors as vertices of unit distance from black
+and secondary colors as vertices of unit distance from white. Alternatively, we can leave this encoding aside and move through color space
+perceptually without a spatial encoding.</p>
+<p><img src="../assets/images/color_traversal.png" width="100%" height="100%"></p>
+<p>Our spatial encoding of color space has resolution one, with points at each unit distance (vertices). Color space at higher resolution
+allows for partial movements. At resolution two, the notion of saturation emerges as the length of the shortest path to a given color, and
+brightness if the color in question is white or black. Tertiary colors also emerge at resolution two as combined distinct movements between
+distinct primary colors. We could, if we so desired, define quarternary, quinary, etc., colors as colors introduced at incrementally higher
+resolutions of color space that are not pre-existing vertices with altered brightness and saturation.</p>
+<p><img src="../assets/images/color_mixing.png" width="100%" height="100%"></p>
+<p>A color prism can be constructed for any subset of colors in color space. This prism represents the harmony of those colors at a 
+resolution equal to resolution of the color space the prism is formed within. Additionally, a ring exists in color space at all 
+resolutions and is formed between all primary and secondary colors one color movement apart. This ring contains all primary, secondary,
+tertiary, etc., colors for which color harmonies in their most saturated form can be identified.</p>
+<p><img src="../assets/images/after_image.png" width="70%" height="70%"></p>
+<p>Visual Perception exhibits both immediate and gradual decay. The dissapearance of an object that highly contrasts its surrounding
+environment leaves a momentary imprint that fades within milliseconds. An after-image that decays at a slower rate can be observed in the
+absence of further visual input. The rate of decay of the after-image of a visual input appears to be proportional to the duration and
+intensity gradient of the visual input that produced it. This after-image is perceived as the gradient map of the visual input with respect
+to color and intensity. Movement or deformation of a visual input in the visual field imprints as singular inputs produced at the rate of
+visual perception.</p>
+<p><img src="../assets/images/sensory_memory.png" width="70%" height="70%"></p>
+<p>Further information processing takes a filtered form of this gradient map as input. A momentary burst of objects in the visual field
+yields an equivalent trace that can be grouped and counted to an upwards of four groups of four objects. Larger groups are chunked,
+five to three and two, seven to four and three, etc. An additional momentary flash across the visual field has no effect, however an
+additional burst of objects in the visual field resets the grouping process, and thus only an upwards of two groups of two objects can be 
+recalled from the initial burst.</p>
+<p>Additional emergent properties of vision include reification, multistability, invariance and grouping. Reification is the inference
+of boundaries that are not visibly perceived. Multistability describes the perceptual oscillation between multiple and individual
+interpretations of a visual stimulus. Invariance is the perception of a singular object under
+transformation (i.e. spatial translation, rotation, reflection, scale and elastic deformation). Grouping is the perception of common
+properties across objects in the visual field (i.e., proximity, symmetry, continuity/closure, common fate, etc.).</p>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</html>
