@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Algebra</title>
+  <link rel="stylesheet" href="article.css"/>
+</head>
+<body>
+<h4>Algebra</h4>
+<p>Intuitively, algebra is not unlike a figure weight balancing exercise. A set of objects exist in a set of equivalence relations, which
+through cancellation and substitution can expressed as equivalence relations in a reduced form. This manipulation is algebra.</p>
+<p><img src="../assets/images/figure_weights.png" width="100%" height="100%"></p>
+<p>We start with linear equations, equations where the exponent of all variables is equal to one. 
+  \[ ax + by = c \]
+  \[ ax + by + cz = d \]
+  \[ ax + by + cz + dw + \cdots = e \]
+Geometrically these equations express hyperplanes, and can be solved if these hyperplanes intersect (lines in the two-dimensional case,
+planes in the three-dimensional case, etc.). Consider the following.
+  \[ a_1x + b_1y + c_1 = 0\]
+  \[ a_2x + b_2y + c_2 = 0\]
+A unique solution is implied if \(\frac{a_1}{a_2} \neq \frac{b_1}{b_2}\) or an infinite solution if 
+\(\frac{a_1}{a_2} = \frac{b_1}{b_2} = \frac{c_1}{b_2} \). No solution is implied if the linear system is inconsistent, 
+\(\frac{a_1}{a_2} = \frac{b_1}{b_2} \neq \frac{c_1}{b_2} \).
+Polynomials exist as the broader subset of algebraic expressions with non-negative integer exponents and the absence of variables as 
+divisors. 
+  \[ P(x) = a_nx^n + a_{n-1}x^{n-1} + a_{n-2}x^{n-2} + \cdots + a_2x^2 + a_1x + a_0 \]
+An \(n\)-order polynomial is a polynomial with highest exponent \(n\). Polynomials can be added, subtracted, multiplied and divided just 
+as variables can.</p>
+<p>The fundamental theorem of algebra details the relationship between polynomials and their zeroes as follows. If \(P(x)\)
+is a non-constant single-variable polynomial with complex coefficients it has at least one complex root. Further, if \(P(x)\) has degree 
+\(n\) it has exactly \(n\) complex roots, counted with multiplicity.</p>
+<p>This theorem relates closely to the factor theorem, outlined as follows. For the polynomial \(P(x)\), if \(r\) is a zero of \(P(x)\) 
+  then \(x - r\) is a factor of \(P(x)\). Similarly, if \(x - r\) is a factor of \(P(x)\) then \(r\) will be a zero of \(P(x)\).</p>
+<p>
+<p>Quadratics are the subset of polynomials of degree \(n = 2\). Finding the zeroes of a quadratic equation is computationally cheap via 
+  the quadratic formula. 
+  \[ ax^2 + bx + c = 0 \]
+  \[ x^2 + \frac{b}{a}x + \frac{c}{a} = 0 \]
+  \[ x^2 + \frac{b}{a}x + (\frac{b}{2a})^2 = -\frac{c}{a} + (\frac{b}{2a})^2 \]
+  \[ (x + \frac{b}{2a})^2 = \frac{b^2 - 4ac}{4a^2} \]
+  \[ x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}\]
+The valence of the discriminat of the quadratic \( \Delta = b^2 - 4ac \) implies the characteristic of the formula's roots. If \(\Delta > 0\)
+two distinct real roots exist, if \(\Delta = 0\) one repeated real root exists, and if \(\Delta \lt 0\) two complex conjugate roots exist.
+Derivation of a general cubic formula is signficantly more complex, as is the quartic formula, though both exist. This is not 
+the case for higher-order polynomials as learnt in Galois Theory. Techniques still exist to simplify and solve for the zeroes of 
+higher-order polynomials if 'in-form' of a polynomial with degree \(n \lt 5\).</p>
+<p>The sum and difference of squares and cubes prove to be useful techniques in polynomial factorisation. 
+  \[ a^2 + b^2 = (a + bi)(a - bi) \]
+  \[ a^2 - b^2 = (a + b)(a - b) \]
+  \[ a^3 + b^3 = (a + b)(a^2 - ab + b^2)\]
+  \[ a^3 - b^3 = (a - b)(a^2 + ab + b^2)\]
+</p>
+<p>Polynomial equations are a subset of algebraic equations which include rational equations with negative exponents and radical 
+  equations with fractional exponents. Further still, there exist Diophantine equations. These are polynomial equations with multiple
+  variables for which often infinitely many integer solutions are sought after. Algebraic equations also include transcendental equations
+  with terms such as \(e^x\) and \(sin(x)\) for which analytic solutions may not exist and thus numerical approximation is applied. 
+</p>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</html>

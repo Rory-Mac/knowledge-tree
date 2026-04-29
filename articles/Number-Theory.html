@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Number-Theory</title>
+  <link rel="stylesheet" href="article.css"/>
+</head>
+<body>
+<h4>Number-Theory</h4>
+<p>The fundamental theorem of arithmetic asserts the existence and uniqueness of prime factorisations over the integers.</p>
+<pre><code>
+Proof of Well-Ordering Principle:
+    Assume that S is a non-empty set of positive integers with no least element.
+    Let T be the set of all positive integers not in S.
+    We know 1 ∈ T, since 1 ∈ S implies that 1 is the least element.  
+    Inductive hypothesis: suppose 1, 2, ..., n ∈ T.
+    If n + 1 ∈ S, n + 1 is the least element by the inductive hypothesis, thus n + 1 ∈ T. 
+    Thus by induction, n ∈ T for all positive integers n, contradicting that S is a non-empty set. 
+    Thus a set of positive integers must have a least element.
+
+Proof of Bezout's identity:
+    Define a set of linear combinations of the integers m and n, S = { ma + nb | m, n ∈ ℤ, ma + nb > 0 }
+    The set is non-empty: m = a, n = b → a^2 + b^2 > 0.
+    Thus by the well-ordering principle S must contain a least positive integer d, where d = ax + by for some x, y.
+    By Euclid's division lemma, a = qd + r, where 0 ≤ r &lt d, so r = a - q(ax + by) = a(1 - qx) + b(-qy).
+    If r > 0, then r is a positive linear combination of a, b less than d. This contradiction implies r = 0.
+    Thus, d|a and similarly d|b, so d is a common divisor of a, b.
+    Now consider the common divisor c, so d = ax + by, a = mc, b = nc, so d = (mc)x + (nc)y = c(mx + ny), so c|d. 
+    If c|d, c &lt d, thus d is gcd(a, b).
+    
+    In summary: d = gcd(a, b) → d = ax + by.
+
+Proof of Euclid's Lemma:
+    Given a prime p, assume p|ab and p∤a. Then gcd(p, a) = 1.
+    By bezout's identity, there exist x, y such that ax + py = 1. Then bax + bpy = b.
+    Since p|abx (given p|ab) and p|bpy, p|(bax + bpy), and thus p|b.
+    In summary: p|ab implies that p|a or p|b.
+
+Proof of existence of prime factors for the natural numbers:
+    For any n > 1.
+        If n = 2, n is prime.
+        Inductive hypothesis: assume that all integers k, where 1 &lt k &lt n, that k is a product of primes.
+        If n is prime, we are done. 
+        If n is composite, then n = a x b, and 1 &lt a, b &lt n.
+        From the inductive hypothesis a, b are prime products, then n = a x b is a product of primes.
+
+Proof of uniqueness of prime factorisation for the natural numbers:
+    Assume the integer n can be expressed by two prime factorizations, p1,p2,...,pn and q1,q2,...,qn.
+    Since p1 | LHS, p1 | RHS. By Euclid's Lemma if p1 | RHS, p1 must divide some factor from the RHS, say q1. 
+    Since all factors are primes, p1 = q1, and we can cancel terms to get p2,...,pn and q1,...,qn, and
+    repeat this process until one side has no remaining factors. Neither side can have remaining factors 
+    without contradicting equality, thus both factorizations must be equal.    
+</code></pre></p>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</html>

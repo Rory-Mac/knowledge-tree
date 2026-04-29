@@ -6,5 +6,6 @@ body {
 }
 img {
   max-width: 100%;
-  margin: 20px 0;
+  display: block;
+  margin: 20px auto;
 }

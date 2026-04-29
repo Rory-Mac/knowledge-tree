@@ -10,8 +10,8 @@ window.addEventListener("resize", resize);
 resize();
 
 // viewport state
-let offsetX = 0, offsetY = 0;
-let scale = 0.2;
+let offsetX = 200, offsetY = -400;
+let scale = 0.1;
 
 // navigation
 let dragging = false;
@@ -21,11 +21,76 @@ let mouseMoved = false;
 let downX = 0, downY = 0;
 const CLICK_THRESHOLD = 5; // in pixels
 
+// editor mode (in-memory, resets on refresh)
+let editorMode = false;
+let draggingPortal = null;
+let firstDoubleClickPortal = null;
+const editorBtn = document.getElementById('editor-btn');
+const logBtn = document.getElementById('log-btn');
+editorBtn.addEventListener('click', () => {
+  editorMode = !editorMode;
+  editorBtn.classList.toggle('visible', editorMode);
+  logBtn.classList.toggle('visible', editorMode);
+  firstDoubleClickPortal = null;
+});
+
+logBtn.addEventListener('click', () => {
+  const colSpacing = portalRadius * 2 + portalHorizontalPadding;
+  const rowSpacing = portalRadius * 2 + portalVerticalPadding;
+  const portalDescriptions = portals.map(p => [
+    p.label,
+    [Math.round(p.x / colSpacing), Math.round(p.y / rowSpacing)]
+  ]);
+  console.log(JSON.stringify(portalDescriptions));
+  const linkDescriptions = links.map(([ai, bi, s, d]) => [portals[ai].label, portals[bi].label, s, d]);
+  console.log(JSON.stringify(linkDescriptions));
+});
+
+const SIDE_OFFSETS = {
+  t: { dx: 0,  dy: -1 },
+  b: { dx: 0,  dy: 1  },
+  l: { dx: -1, dy: 0  },
+  r: { dx: 1,  dy: 0  },
+};
+
+function sideMidpoint(portal, side) {
+  const off = SIDE_OFFSETS[side];
+  return { x: portal.x + off.dx * portal.r, y: portal.y + off.dy * portal.r };
+}
+
+// pick the side of `portal` that faces `other` and is closest to the click
+function chooseSide(portal, other, clickClientX, clickClientY) {
+  const ranked = Object.keys(SIDE_OFFSETS)
+    .map(s => {
+      const mp = sideMidpoint(portal, s);
+      return { side: s, mp, dOther: Math.hypot(mp.x - other.x, mp.y - other.y) };
+    })
+    .sort((a, b) => a.dOther - b.dOther)
+    .slice(0, 2);
+
+  const worldX = (clickClientX - offsetX) / scale;
+  const worldY = (clickClientY - offsetY) / scale;
+  ranked.sort((a, b) =>
+    Math.hypot(a.mp.x - worldX, a.mp.y - worldY) -
+    Math.hypot(b.mp.x - worldX, b.mp.y - worldY)
+  );
+  return ranked[0].side;
+}
+
 canvas.addEventListener('mousedown', e => {
   mouseDown = true;
   mouseMoved = false;
   downX = lastX = e.clientX;
   downY = lastY = e.clientY;
+
+  if (editorMode) {
+    const hit = portals.find(p => p.contains(e.clientX, e.clientY));
+    if (hit) {
+      draggingPortal = hit;
+      return;
+    }
+  }
+
   dragging = true;
 });
 
@@ -36,6 +101,16 @@ canvas.addEventListener('mousemove', e => {
     if (Math.abs(dx) > CLICK_THRESHOLD || Math.abs(dy) > CLICK_THRESHOLD) {
       mouseMoved = true;
     }
+  }
+
+  if (draggingPortal) {
+    const worldX = (e.clientX - offsetX) / scale;
+    const worldY = (e.clientY - offsetY) / scale;
+    const colSpacing = portalRadius * 2 + portalHorizontalPadding;
+    const rowSpacing = portalRadius * 2 + portalVerticalPadding;
+    draggingPortal.x = Math.round(worldX / colSpacing) * colSpacing;
+    draggingPortal.y = Math.round(worldY / rowSpacing) * rowSpacing;
+    return;
   }
 
   if (dragging) {
@@ -49,6 +124,12 @@ canvas.addEventListener('mousemove', e => {
 canvas.addEventListener('mouseup', e => {
   dragging = false;
 
+  if (draggingPortal) {
+    draggingPortal = null;
+    mouseDown = false;
+    return;
+  }
+
   // portal click only processed if user is not currently dragging
   if (!mouseMoved) {
     handlePortalClick(e);
@@ -60,6 +141,7 @@ canvas.addEventListener('mouseup', e => {
 canvas.addEventListener('mouseleave', () => {
   dragging = false;
   mouseDown = false;
+  draggingPortal = null;
 });
 
 // zoom 
@@ -91,15 +173,134 @@ canvas.addEventListener('contextmenu', e => {
   e.preventDefault();
 });
 
+// touch / mobile navigation: single-finger pan, two-finger pinch zoom, tap-to-open
+let touchPanLast = null;
+let pinchPrev = null;
+let touchDownPos = null;
+let touchMoved = false;
+
+function touchMidpoint(t1, t2) {
+  return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+}
+function touchDistance(t1, t2) {
+  return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+}
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    const t = e.touches[0];
+    touchPanLast = { x: t.clientX, y: t.clientY };
+    touchDownPos = { x: t.clientX, y: t.clientY };
+    touchMoved = false;
+    pinchPrev = null;
+  } else if (e.touches.length === 2) {
+    const [a, b] = e.touches;
+    const mid = touchMidpoint(a, b);
+    pinchPrev = { dist: touchDistance(a, b), x: mid.x, y: mid.y };
+    touchPanLast = null;
+    touchMoved = true;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1 && touchPanLast) {
+    const t = e.touches[0];
+    offsetX += t.clientX - touchPanLast.x;
+    offsetY += t.clientY - touchPanLast.y;
+    touchPanLast = { x: t.clientX, y: t.clientY };
+    if (touchDownPos) {
+      const tdx = t.clientX - touchDownPos.x;
+      const tdy = t.clientY - touchDownPos.y;
+      if (Math.abs(tdx) > CLICK_THRESHOLD || Math.abs(tdy) > CLICK_THRESHOLD) {
+        touchMoved = true;
+      }
+    }
+  } else if (e.touches.length === 2 && pinchPrev) {
+    const [a, b] = e.touches;
+    const dist = touchDistance(a, b);
+    const mid = touchMidpoint(a, b);
+
+    // pan by midpoint motion
+    offsetX += mid.x - pinchPrev.x;
+    offsetY += mid.y - pinchPrev.y;
+
+    // zoom around current midpoint
+    const worldX = (mid.x - offsetX) / scale;
+    const worldY = (mid.y - offsetY) / scale;
+    scale *= dist / pinchPrev.dist;
+    offsetX = mid.x - worldX * scale;
+    offsetY = mid.y - worldY * scale;
+
+    pinchPrev = { dist, x: mid.x, y: mid.y };
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  if (e.touches.length === 0) {
+    if (touchDownPos && !touchMoved) {
+      handlePortalClick({ clientX: touchDownPos.x, clientY: touchDownPos.y });
+    }
+    touchPanLast = null;
+    touchDownPos = null;
+    pinchPrev = null;
+    touchMoved = false;
+  } else if (e.touches.length === 1) {
+    const t = e.touches[0];
+    touchPanLast = { x: t.clientX, y: t.clientY };
+    pinchPrev = null;
+  }
+});
+
+canvas.addEventListener('touchcancel', () => {
+  touchPanLast = null;
+  touchDownPos = null;
+  pinchPrev = null;
+  touchMoved = false;
+});
+
+canvas.addEventListener('dblclick', e => {
+  if (!editorMode) return;
+  const hit = portals.find(p => p.contains(e.clientX, e.clientY));
+  if (!hit) { firstDoubleClickPortal = null; return; }
+
+  if (!firstDoubleClickPortal || firstDoubleClickPortal.portal === hit) {
+    firstDoubleClickPortal = (firstDoubleClickPortal?.portal === hit)
+      ? null
+      : { portal: hit, clickX: e.clientX, clickY: e.clientY };
+    return;
+  }
+
+  const src = firstDoubleClickPortal.portal;
+  const dst = hit;
+  const srcIdx = portals.indexOf(src);
+  const dstIdx = portals.indexOf(dst);
+
+  const existingIdx = links.findIndex(l =>
+    (l[0] === srcIdx && l[1] === dstIdx) ||
+    (l[0] === dstIdx && l[1] === srcIdx)
+  );
+
+  if (existingIdx !== -1) {
+    links.splice(existingIdx, 1);
+  } else {
+    const srcSide = chooseSide(src, dst, firstDoubleClickPortal.clickX, firstDoubleClickPortal.clickY);
+    const dstSide = chooseSide(dst, src, e.clientX, e.clientY);
+    links.push([srcIdx, dstIdx, srcSide, dstSide]);
+  }
+
+  firstDoubleClickPortal = null;
+});
+
 class Portal {
-  constructor(x, y, r, label, articleHref, isEmpty) {
+  constructor(x, y, r, label, articleHref) {
     this.x = x;
     this.y = y;
     this.r = r;
 
     this.label = label;
     this.href = articleHref;
-    this.isEmpty = isEmpty;
     this.hover = false;
     this.image = null;
 
@@ -122,161 +323,90 @@ class Portal {
 
   draw() {
     const {sx, sy, sr} = this.screenPos();
-    ctx.save();
+    const r = sr * this.hoverScale;
 
-    // radius — empty portals never grow
-    const r = this.isEmpty ? sr : sr * this.hoverScale;
+    ctx.fillStyle = "black";
+    ctx.fillRect(sx - r, sy - r, r*2, r*2);
 
-    // no clip/pad/img for empty
-    if (!this.isEmpty) {
-      ctx.beginPath();
-      ctx.arc(sx, sy, r, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-
-      // padding
-      ctx.fillStyle = "black";
-      ctx.fillRect(sx - r, sy - r, r*2, r*2);
-
-      // inset image
-      const inset = 0.5;
-      const imgSize = r * 2 * inset;
-
-      if (this.image?.complete) {
-        ctx.drawImage(
-          this.image,
-          sx - imgSize / 2,
-          sy - imgSize / 2,
-          imgSize,
-          imgSize
-        );
+    if (this.mipmaps) {
+      const pad = r * portalImagePadding;
+      const ir = r - pad;
+      const targetPx = ir * 2;
+      let level = this.mipmaps[0];
+      for (const m of this.mipmaps) {
+        if (m.width >= targetPx) level = m;
+        else break;
       }
-
-      // darken hover
-      if (this.hover) {
-        ctx.fillStyle = `rgba(0,0,0,0.35)`;
-        ctx.fillRect(sx - r, sy - r, r*2, r*2);
-      }
+      ctx.drawImage(level, sx - ir, sy - ir, ir*2, ir*2);
     }
 
-    ctx.restore();
+    if (this.hover) {
+      ctx.fillStyle = `rgba(0,0,0,0.35)`;
+      ctx.fillRect(sx - r, sy - r, r*2, r*2);
+    }
 
-    // draw outline (if empty: fixed grey, no hover color)
-    ctx.beginPath();
-    ctx.arc(sx, sy, r, 0, Math.PI * 2);
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 10 * scale;
-    ctx.stroke();
+    //ctx.strokeRect(sx - r, sy - r, r*2, r*2);
+  }
 
-    // draw label overlay (if portal not empty)
-    if (!this.isEmpty && this.hover) {
-      ctx.font = "bold 14px Sans-Serif";
-      ctx.fillStyle = "white";
-      ctx.textAlign = "center";
-      ctx.fillText(this.label, sx, sy + r + 20);
-    }
+  drawLabel() {
+    const {sx, sy, sr} = this.screenPos();
+    const r = sr * this.hoverScale;
+    ctx.font = "bold 14px Sans-Serif";
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.fillText(this.label, sx, sy + r + 20);
   }
 
   contains(px, py) {
     const {sx, sy, sr} = this.screenPos();
-    return (px - sx)**2 + (py - sy)**2 <= sr**2;
+    return Math.abs(px - sx) <= sr && Math.abs(py - sy) <= sr;
   }
 }
 
 const portalRadius = 200;
 const portalHorizontalPadding = 200;
-const portalVerticalPadding = 400;
+const portalVerticalPadding = 200;
+const portalImagePadding = 0.2;
 
-// 0 -> No portal, 1 -> Portal, 2 -> Empty Portal 
-const portalPositions = [
-  [0,0,0,0,2,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,1,0,0],
-  [0,1,1,1,1,0,0,1,1,1,1],
-  [0,0,1,0,0,1,0,1,0,1,0],
-  [0,0,1,1,1,1,1,1,1,0,0],
-  [0,0,0,0,1,1,1,0,0,0,0],
-  [0,0,0,0,1,1,1,0,0,0,0],
-  [0,0,0,0,1,1,1,0,0,0,0],
-  [0,0,0,1,1,0,0,0,0,0,0],
-  [0,0,0,0,0,1,0,0,0,0,0],
-  [0,1,0,1,1,0,1,0,0,0,0],
-  [1,1,1,1,1,1,1,0,0,0,0],
-  [0,0,0,0,2,2,2,0,0,0,0],
-]
+// list of portal tuples [name index, portal grid coord]
+const portalPositions = [["Org-Structs",[10,-5]],["Web-Development",[5,-3]],["Distributed-Systems",[4,-3]],["Object-Oriented",[6,-3]],["Data-Structures",[7,-3]],["Economics",[10,-3]],["Neural-Networks",[3,8]],["Project-Evolution",[11,-3]],["Geopolitics",[12,-3]],["Computer-Networks",[4,-2]],["Computational-Complexity",[7,-1]],["Probability-Theory",[8,6]],["Game-Theory",[10,-1]],["Operating-Systems",[4,-1]],["Multi-Processing",[5,-1]],["Compilation",[6,-1]],["Calculus",[7,8]],["Geometry",[9,10]],["Automata-Theory",[10,10]],["Causality",[11,10]],["Topology",[9,8]],["Linear-Algebra",[7,10]],["Graph-Theory",[9,11]],["Number-Theory",[6,10]],["Computer-Architecture",[4,1]],["Algebra",[8,10]],["Narratives",[11,1]],["Digital-Circuits",[4,2]],["Abstract-Algebra",[8,8]],["Electrostatics",[6,4]],["Set-Theory",[8,12]],["Category-Theory",[9,6]],["The-Self",[11,2]],["Memory",[7,15]],["Number-Systems",[7,12]],["Classical-Mechanics",[5,6]],["Wave-Mechanics",[7,4]],["Fluid-Mechanics",[8,4]],["Formal-Logic",[4,12]],["Formal-Language",[8,14]],["Perception",[5,17]],["Music",[8,17]],["Dance",[7,17]],["Markov-Process",[10,8]],["Agency",[11,8]],["Audition",[8,19]],["Proprioception",[7,19]],["Vision",[6,19]],["Somatosensation",[5,19]],["Chemoreception",[4,19]],["Ontology",[9,13]],["Belief",[12,10]],["Emotion",[9,19]]];
 
-const portalNames = [
-"Empty1",
-"Org-Structs", 
-"Web-Development", "Distributed-Systems", "Object-Oriented", "Data-Structures", "Economics", "Neural-Networks", "Project-Evolution", "Geopolitics",
-"Computer-Networks", "Computational-Complexity", "Probability-Theory", "Game-Theory",
-"Operating-Systems", "Multi-Processing", "Compilation", "Calculus", "Geometry", "Topology", "Linear-Algebra",
-"Computer-Architecture", "Graph-Theory", "Abstract-Algebra",
-"Digital-Circuits", "Set-Theory", "Category-Theory",
-"Electrostatics", "Formal-Logic", "Formal-Language",
-"Classical-Mechanics", "Wave-Mechanics", 
-"Memory",
-"Perception", "Music", "Dance", "Narratives", 
-"Chemoreception", "Somatosensation", "Vision", "Audition", "Proprioception", "Ontology", "Emotion",
-"Physical", "Intellectual", "Spiritual"
-]
-
-const portalLinks = [
-  ["Empty1", "Web-Development"], ["Empty1", "Object-Oriented"], ["Empty1", "Object-Oriented"], ["Empty1", "Data-Structures"], ["Empty1", "Org-Structs"],
-	["Org-Structs", "Project-Evolution"], ["Org-Structs", "Economics"],
-	["Data-Structures", "Compilation"], ["Data-Structures", "Computational-Complexity"], ["Neural-Networks", "Linear-Algebra"], ["Neural-Networks", "Game-Theory"], ["Economics", "Probability-Theory"], ["Economics", "Game-Theory"], ["Project-Evolution", "Game-Theory"], ["Geopolitics", "Game-Theory"],
-	["Web-Development", "Computer-Networks"], ["Distributed-Systems", "Computer-Networks"], ["Object-Oriented", "Compilation"], ["Computational-Complexity", "Calculus"], ["Probability-Theory", "Calculus"], ["Game-Theory", "Linear-Algebra"], ["Game-Theory", "Narratives"],
-	["Multi-Processing", "Computer-Architecture"], ["Operating-Systems", "Computer-Architecture"], ["Computer-Networks", "Operating-Systems"], ["Computer-Networks", "Multi-Processing"], ["Compilation", "Computer-Architecture"], 
-	["Calculus", "Abstract-Algebra"], ["Linear-Algebra", "Abstract-Algebra"], ["Geometry", "Abstract-Algebra"], ["Topology", "Abstract-Algebra"], 
-	["Computer-Architecture", "Digital-Circuits"], ["Graph-Theory", "Set-Theory"], ["Graph-Theory", "Category-Theory"], ["Abstract-Algebra", "Category-Theory"], ["Abstract-Algebra", "Set-Theory"], 
-	["Digital-Circuits", "Electrostatics"], ["Digital-Circuits", "Formal-Logic"], ["Set-Theory", "Formal-Logic"], ["Category-Theory", "Formal-Logic"], ["Category-Theory", "Formal-Language"], 
-	["Electrostatics", "Classical-Mechanics"], ["Electrostatics", "Wave-Mechanics"],
-  ["Classical-Mechanics", "Memory"], ["Wave-Mechanics", "Memory"], ["Formal-Logic", "Memory"], ["Formal-Language", "Memory"], 
-  ["Memory", "Ontology"], ["Memory", "Perception"],
-	["Perception", "Vision"], ["Perception", "Audition"], ["Perception", "Proprioception"], ["Perception", "Chemoreception"], ["Perception", "Somatosensation"],
-  ["Music", "Audition"], ["Music", "Emotion"], ["Dance", "Proprioception"], ["Dance", "Emotion"], ["Narratives", "Emotion"], 
-  ["Chemoreception", "Physical"], ["Somatosensation", "Physical"], ["Audition", "Physical"], ["Proprioception", "Physical"], ["Vision", "Physical"], ["Ontology", "Intellectual"], ["Emotion", "Spiritual"],
-];
+// portal links formatted as [src portal name, dest portal name, src side, dest side]
+// sides: "l" left, "r" right, "t" top, "b" bottom — spline exits src, enters dst
+const portalLinks = [["Org-Structs","Project-Evolution","b","t"],["Org-Structs","Economics","b","t"],["Data-Structures","Compilation","b","t"],["Data-Structures","Computational-Complexity","b","t"],["Economics","Game-Theory","b","t"],["Project-Evolution","Game-Theory","b","t"],["Geopolitics","Game-Theory","b","t"],["Web-Development","Computer-Networks","b","t"],["Distributed-Systems","Computer-Networks","b","t"],["Object-Oriented","Compilation","b","t"],["Multi-Processing","Computer-Architecture","b","t"],["Operating-Systems","Computer-Architecture","b","t"],["Computer-Networks","Operating-Systems","b","t"],["Computer-Networks","Multi-Processing","b","t"],["Compilation","Computer-Architecture","b","t"],["Computer-Architecture","Digital-Circuits","b","t"],["Electrostatics","Classical-Mechanics","b","t"],["Belief","Agency","t","b"],["Belief","Emotion","b","t"],["Emotion","Dance","t","b"],["Emotion","Music","t","b"],["Chemoreception","Perception","t","b"],["Vision","Perception","t","b"],["Somatosensation","Perception","t","b"],["Proprioception","Perception","t","b"],["Audition","Perception","t","b"],["Proprioception","Dance","t","b"],["Audition","Music","t","b"],["Perception","Memory","t","b"],["Formal-Language","Set-Theory","t","b"],["Formal-Logic","Formal-Language","b","t"],["Formal-Language","Memory","b","t"],["Number-Systems","Formal-Language","b","t"],["Set-Theory","Graph-Theory","t","b"],["Algebra","Abstract-Algebra","t","b"],["Abstract-Algebra","Linear-Algebra","b","t"],["Number-Theory","Number-Systems","b","t"],["Linear-Algebra","Number-Systems","b","t"],["Algebra","Number-Systems","b","t"],["Formal-Language","Ontology","t","b"],["Topology","Geometry","b","t"],["Topology","Category-Theory","t","b"],["Category-Theory","Abstract-Algebra","b","t"],["Algebra","Calculus","t","b"],["Geometry","Graph-Theory","b","t"],["Classical-Mechanics","Linear-Algebra","b","t"],["Calculus","Classical-Mechanics","t","b"],["Probability-Theory","Calculus","b","t"],["Wave-Mechanics","Classical-Mechanics","b","t"],["Digital-Circuits","Formal-Logic","b","t"],["Electrostatics","Digital-Circuits","t","b"],["Computational-Complexity","Computer-Architecture","b","t"],["Ontology","Belief","t","b"],["Ontology","Causality","t","b"],["Automata-Theory","Graph-Theory","b","t"],["Causality","Agency","t","b"],["Markov-Process","Automata-Theory","b","t"],["Neural-Networks","Linear-Algebra","b","t"],["Formal-Logic","Neural-Networks","t","b"],["Game-Theory","Markov-Process","b","t"],["Classical-Mechanics","Fluid-Mechanics","t","b"],["Classical-Mechanics","Perception","b","t"],["The-Self","Narratives","t","b"],["Agency","The-Self","t","b"],["Game-Theory","Narratives","b","t"],["Fluid-Mechanics","The-Self","t","b"]];
 
 function generatePortals() {
   const portals = [];
   const nameToIndex = new Map();
 
   // generate portals
-  let portalCount = -1;
-  for (let row = 0; row < portalPositions.length; row++) {
-    for (let col = 0; col < portalPositions[row].length; col++) {
-      const id = portalPositions[row][col];
-      if (id === 0) continue;
-      
-      portalCount += 1;
+  for (const [name, [col, row]] of portalPositions) {
 
-      const name = portalNames[portalCount];
-      if (!name) {
-        console.warn(`No name mapped for portal id ${id}`);
-        continue;
-      }
-
-      const x = col * ((portalRadius * 2) + portalHorizontalPadding);
-      const y = row * ((portalRadius * 2) + portalVerticalPadding);
-      const article = `articles/${name}.html`;
-
-      const isEmpty = id === 2;
-      const portal = new Portal(x, y, portalRadius, name, article, isEmpty);
-
-      nameToIndex.set(name, portals.length);
-      portals.push(portal);
+    if (!name) {
+      console.warn(`No name mapped for portal id ${id}`);
+      continue;
     }
+    
+    const x = col * ((portalRadius * 2) + portalHorizontalPadding);
+    const y = row * ((portalRadius * 2) + portalVerticalPadding);
+    const article = `articles/${name}.html`;
+    
+    const portal = new Portal(x, y, portalRadius, name, article);
+    nameToIndex.set(name, portals.length);
+    portals.push(portal);
   }
 
   // generate portal edges (links)
   const links = [];
   for (const link of portalLinks) {
-    if (!Array.isArray(link) || link.length !== 2) continue;
-    const [aName, bName] = link;
+    if (!Array.isArray(link) || link.length !== 4) continue;
+    const [aName, bName, srcSide, dstSide] = link;
     const ai = nameToIndex.get(aName);
     const bi = nameToIndex.get(bName);
     if (ai != null && bi != null) {
-      links.push([ai, bi]);
+      links.push([ai, bi, srcSide, dstSide]);
     } else {
       console.warn(`Link skipped: ${aName} ↔ ${bName}, missing portal.`);
     }
@@ -289,13 +419,31 @@ const { portals, links } = generatePortals();
 window.portals = portals;
 window.links = links;
 
+function buildMipmaps(img) {
+  const levels = [img];
+  let prev = img;
+  let w = img.width, h = img.height;
+  while (w > 2 && h > 2) {
+    w = Math.max(1, w >> 1);
+    h = Math.max(1, h >> 1);
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const cx = c.getContext('2d');
+    cx.imageSmoothingEnabled = true;
+    cx.imageSmoothingQuality = 'high';
+    cx.drawImage(prev, 0, 0, w, h);
+    levels.push(c);
+    prev = c;
+  }
+  return levels;
+}
+
 function loadPortalImages(portals) {
   portals.forEach(p => {
-    if (p.isEmpty) return;
-
     const img = new Image();
     img.onload = () => {
-      p.image = img;
+      p.mipmaps = buildMipmaps(img);
     };
     img.src = `assets/portals/${p.label}.png`;
   });
@@ -306,15 +454,16 @@ loadPortalImages(portals);
 // clicked / hovered detection
 canvas.addEventListener('mousemove', e => {
   portals.forEach(p => {
-    const hov = p.isEmpty ? false : p.contains(e.clientX, e.clientY);
+    const hov = p.contains(e.clientX, e.clientY);
     p.hover = hov;
     p.targetHoverScale = hov ? 1.1 : 1;
   });
 });
 
 function handlePortalClick(e) {
+  if (editorMode) return;
   portals.forEach(p => {
-    if (!p.isEmpty && p.contains(e.clientX, e.clientY)) {
+    if (p.contains(e.clientX, e.clientY)) {
       window.location.href = p.href;
     }
   });
@@ -324,23 +473,21 @@ function drawLinks() {
   ctx.strokeStyle = "#fff";
   ctx.lineWidth = 10 * scale;
 
-  links.forEach(([aIndex, bIndex]) => {
+  const sx = x => x * scale + offsetX;
+  const sy = y => y * scale + offsetY;
+
+  links.forEach(([aIndex, bIndex, srcSide, dstSide]) => {
     const A = portals[aIndex];
     const B = portals[bIndex];
 
-    // anchors
-    const P0 = { x: A.x, y: A.y + A.r };
-    const P3 = { x: B.x, y: B.y - B.r };
-
-    // curvature height in world space
-    const h = (P3.y - P0.y) / 3;
-
-    // control points for cubic
-    const P1 = { x: P0.x, y: P0.y + h };
-    const P2 = { x: P3.x, y: P3.y - h };
-
-    const sx = x => x * scale + offsetX;
-    const sy = y => y * scale + offsetY;
+    const P0 = sideMidpoint(A, srcSide);
+    const P3 = sideMidpoint(B, dstSide);
+    const dist = Math.hypot(P3.x - P0.x, P3.y - P0.y);
+    const off = dist / 3;
+    const sO = SIDE_OFFSETS[srcSide];
+    const dO = SIDE_OFFSETS[dstSide];
+    const P1 = { x: P0.x + sO.dx * off, y: P0.y + sO.dy * off };
+    const P2 = { x: P3.x + dO.dx * off, y: P3.y + dO.dy * off };
 
     ctx.beginPath();
     ctx.moveTo(sx(P0.x), sy(P0.y));
@@ -367,6 +514,10 @@ function animate(time) {
   portals.forEach(p => {
     p.update(dt);
     p.draw();
+  });
+
+  portals.forEach(p => {
+    if (p.hover) p.drawLabel();
   });
 
   requestAnimationFrame(animate);
