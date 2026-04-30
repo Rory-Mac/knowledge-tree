@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Imperative-Programming</title>
+  <link rel="stylesheet" href="article.css"/>
+</head>
+<body>
+<h4>Imperative Programming</h4>
+<h5>Overview</h5>
+<p>Imperative programming is a paradigm of programming where programs are written as step-by-step instruction sequences where the steps 
+written act as a recipe for the results they produce. Modern computers extend the Von Neumann Architecture whereby sequential instructions 
+are stored in the same memory region as data and instruct how such data is manipulated across time. Thus machine language on any machine 
+that extends this architecture is inherently imperative. However, high-level languages that abstract from imperative machine language are 
+not necessarily imperative.</p>
+<h5>Assembly Language Program Flow Control</h5>
+<p>The simple categories of machine instruction are data transfer, data manipulation, and program control. Data transfer instructions move
+data between memory regions, typically between main memory, cpu-registers and IO devices.
+<pre><code>
+    LOAD: loads value from a memory address to a register, e.g. LOAD R1 1024
+    STORE: stores value from a register to a memory address, e.g. STORE R1 1024
+    MOVE: overwrite value at destination register with source register value, e.g. MOVE RD RS
+    PUSH: save a register value to the stack and increment the stack pointer, e.g. PUSH R1
+    POP: load a register value from the top of the stack and decrement the stack pointer, e.g. POP R1 
+    IN: read data from the memory address of an input device into a register, e.g. IN R1 PORT_ADDR1
+    OUT: write data from a register to the memory address of an output device, e.g. IN R1 PORT_ADDR2
+</code></pre>
+Data manipulation instructions compute and store the result of some computation over stored data, typically arithmetic and logical 
+instructions.
+<pre><code>
+    ADD / SUB / MUL / DIV / INC / DEC : store the result of an arithmetic operation, e.g. ADD R1 R1 R2
+    AND / OR / NOT / XOR : store the result of a bitwise logical operation, e.g. XOR R3 R1 R2
+    SHL / SHR : bitwise shift of stored bits left/right fill with zero, e.g. SHL R1 4
+</code></pre>
+Program control instructions move the pointer from which instructions are read, mainly consisting of conditional and unconditional branch 
+operations.
+<pre><code>
+    BEQ / BLT / BGT : branch to instruction address 'label' if given registers meet criterion, e.g. BEQ R1 R2 label
+    B / BR / JMP : branch/jump to instruction address or instruction address stored in register, e.g. BR R1, JMP 2064 
+</code></pre></p>
+<p>Loops and conditionals are the first abstractions over machine language that simplify the syntax of program flow. Let's look at an
+if-else block in a high-level programming language and its machine language equivalent.
+<pre><code>     // if (A == B) do X else do Y
+
+        LOAD R1 A
+        LOAD R2 B
+        BEQ R1 R2 ELSE_CONDITION
+        CALL X
+        JMP END_IF
+        ELSE_CONDITION:
+        CALL Y
+        END_IF:
+
+</code></pre>
+Let's look at a while loop and for loop expressed in a high-level programming language and their machine language equivalent. 
+<pre><code>    // i = 0; while (i &lt 10) { do X ; i++ ; }
+    // for (i = 0; i &lt 10; i++) { do X }
+
+        LOAD R1 0
+        LOAD R2 10
+        WHILE_START:
+        CMP R1 R2
+        BGE WHILE_END 
+        ADDI R1 R1 1
+        CALL X
+        JMP WHILE_START
+        WHILE_END:
+</code></pre>
+We introduced CMP and CALL without explanation. The CMP operation simply compares two register values and sets cpu output flags 
+to be read by a subsequent branch/jump instruction. Other operations could mutate these output flags if the branch/jump 
+instruction is not called immediately after the compare. These output flags typically include the following.
+<pre><code>
+        ZF: zero flag, set to one if operands are equal
+        CF: carry flag, set to one if an unsigned borrow occurred (indicates RD &lt RS)
+        SF: sign flag, set to one if (RD - RS &lt 0)
+        OF : overflow flag, set to one if signed overflow occurs from subtraction 
+</code></pre>
+The CALL instruction is typically a pseudo-instruction that simplifies register management when calling a subroutine. It pushes relevant 
+register values to the stack (program counter, stack pointer, frame pointer, return address, etc.) to the stack, and jumps to the first 
+instruction of the called function.</p>
+<h5>High-Level Language Program Flow Control</h5>
+<p>Coroutines introduce a more complex form of control flow. In a standard function call, the stack frame of the current function is saved 
+before branching to the invoked subroutine. That state is only restored when the callee returns. Coroutines instead allow execution to 
+be paused and resumed explicitly, via a new keyword such as 'yield'. This keyword saves the stack frame of the current function before 
+branching to another routine. Then when 'yield to' is called downstream with reference to this calling coroutine, the stack frame is
+reloaded into memory and suspended execution continues. The following producer-consumer model is a good example.
+<pre><code>    q := new Queue&ltItem&gt
+
+    coroutine produce
+        loop
+            while q is not full
+                create some new items
+                add the items to q
+            yield to consume
+
+    coroutine consume
+        loop
+            while q is not empty
+                remove some items from q
+                use the items
+            yield to produce
+
+    call produce
+</code></pre>
+Coroutines provide concurrency, allowing multiple tasks to be completed simultaneously. Restructuring this example to include a 
+producer and consumer thread with a shared event queue introduces multi-threading concepts. Coroutines are not multi-threaded and do 
+not provide parallelism however. Instead we say that coroutines are cooperatively multitasked, as the yield operator yields program 
+control explicitly to another coroutines. Compare this to pre-emptively multitasked events, where one process yields control to 
+another process at the instruction of an external scheduler.</p>
+<p>Next we have semicoroutines, also known as generators, which use the yield operator but do not specify a coroutine to yield to.
+An additional dispatcher is used to call generators based on some scheduling logic, to allow for their partial execution. This allows 
+for the program to invoke the action of a subroutine on-demand rather than all at once, which proves useful when computation should be
+split up across time (infinite sequence, data structure traversal, live data stream, etc.).
+<pre><code>    q := new Queue&ltItem&gt
+
+    generator produce
+        loop
+            while q is not full
+                create some new items
+                add the items to q
+            yield
+
+    generator consume
+        loop
+            while q is not empty
+                remove some items from q
+                use the items
+            yield
+
+    subroutine dispatcher
+        d := new Map<Generator, Iterator>
+        d[produce] := start consume
+        d[consume] := start produce
+        current := produce
+        loop
+            call current
+            current := next d[current]
+
+    call dispatcher
+</code></pre></p>
+<p>Generator functions also allow for the implementation of lazy evaluation. Let's consider a simple example.
+<pre><code>
+    generator getEven(numbers):
+        for each n of numbers:
+            if (n % 2 == 0):
+                yield return n
+
+    numbers := [1,2,3, ...]
+    for each n of getEven(numbers):
+        console.write(n)
+
+</code></pre>
+Here the generator function has a large and possibly infinite input array, but uses the yield operator to return program control to the 
+calling function as soon as the next relevant result is discovered. Because the next result can be evaluated without evaluating 
+all results in the array (as would be necessary in the absence of the yield keyword), we say that the result was lazily evaluated.</p>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</html>
