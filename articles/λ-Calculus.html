@@ -7,7 +7,32 @@
 </head>
 <body>
 <h4>λ-Calculus</h4>
-<p>TBD</p>
+<p>The lambda calculus is a formal system for expressing computation. Lambda calculus is powerful in that it defines no primitive data types,
+instead modelling computation through function abstraction and application alone. The BNF syntax of the lambda calculus is as follows.
+\[ e ::= \> x \>|\> \lambda x . e \>|\> e \> e \]
+Thus we have three primitive expressions. We have the variable \(x\) as a lambda term. We have function abstraction \((\lambda x . t )\) 
+where \(t\) is a lambda term, and \(x\) is referred to as the parameter variable. We also have function application \((t \> s)\) where
+\(t\) and \(s\) are lambda terms.</p>
+<p>If a variable is the parameter of any enclosing \(\lambda\) it is said to be bound, else it is said to be free. For example, in the 
+    following statement, \(y\) is the only free variable.
+    \[ (\lambda x . ((\lambda z . (x z))(\lambda x . y))) \]
+We can put this more formally as follows.
+    \[ FV(x) = \{x\} \]
+    \[ FV(M_1 M_2) = FV(M_1) \cup FV(M_2) \]
+    \[ FV(\lambda x . M) = FV(M) \>\backslash\> \{x\} \]
+</p>
+<p>Lambda calculus then formalises a broad notion of term substitution called capture-avoiding substitution.
+    \[ x[x : = N] \equiv N \]
+    \[ x \neq y \rightarrow y[x : = N] \equiv y \]
+    \[ (M_1 M_2)[x := N] \equiv (M_1 [x := N]) (M_2 [x := N]) \]
+    \[ x = y \rightarrow (\lambda y . M)[x := N] \equiv (\lambda x . M) \]
+    \[ y \notin FV(n) \rightarrow (\lambda y . M)[x := N] \equiv (\lambda y . (M[x := N])) \]
+    \[ y \in FV(n) \rightarrow (\lambda y . M)[x := N] \equiv \lambda y' . M [y := y'][x := N] \]
+With definitions in order we introduce beta-reduction as an expression equivalence to simplify expressions.
+    \[ (\lambda x . t) s \equiv t[x := s] \]
+
+</p>
+
 </body>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </html>
