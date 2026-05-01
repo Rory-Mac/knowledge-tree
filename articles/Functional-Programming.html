@@ -7,7 +7,26 @@
 </head>
 <body>
 <h4>Functional Programming</h4>
-<p>TBD</p>
+<p>Functional programming is a declarative paradigm of programming that constructs software through the composition of pure functions. 
+Functional programming is declarative in the sense that the programmer declares the result before declaring the series of transformations 
+that produce that result.
+<pre><code>    Declarative : R is the result from a reduction of C from a filtering of B from a mapping of A. 
+    Imperative : A is mapped to B, B is filtered to C, C is reduced to the result R. 
+</code></pre>
+A function is considered pure if it is deterministic (the function will produce the same output for a given input no matter how many 
+times the function executes) and has no side-effects, i.e. does not modify any memory external to the scope of that function.</p>
+<p>Functional programming maintains immutability as a core principle. Once a variable is assigned and populated with data, that data is immutable. Pure functional programming will not transform that data in-place, if transformation is required, 
+the transformed data will occupy a new region of memory, whilst the original data remains intact. 
+<pre><code>    Declarative: 
+        list = [1, 2, 3]
+        newList = [...list, 4] 
+    Imperative: 
+        list = [1, 2, 3]
+        list.push(4)
+</code></pre>
+Functional Programming also treats function as first-class citizens, meaning they are treating as primitive data values might be. They can 
+be passed as arguments, stored in variables and returned from functions.</p>
+
 </body>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </html>
